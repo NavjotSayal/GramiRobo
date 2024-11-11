@@ -10,7 +10,6 @@ app = Flask(__name__)
 def home():
     return jsonify({"student_number": "200568700"})
 
-# Webhook route that handles requests from Dialogflow
 @app.route('/webhook', methods=['POST'])
 def webhook():
     # Step 1: Get the JSON data sent by Dialogflow
@@ -25,40 +24,38 @@ def webhook():
         intent = req.get('queryResult', {}).get('intent', {}).get('displayName', 'Unknown')
         parameters = req.get('queryResult', {}).get('parameters', {})
 
-        # Step 4: Set a default response if the intent is not recognized
+        # Print to inspect the request data and check if the parameter exists
+        print(f"Received request: {req}")
+        print(f"Intent: {intent}")
+        print(f"Parameters: {parameters}")
+
+        # Step 4: Check if the parameter 'crypto' is present
+        crypto_name = parameters.get('crypto', None)
+
+        # Print the value of crypto_name
+        print(f"Crypto Name: {crypto_name}")
+
+        # Set a default response if the intent is not recognized
         fulfillment_text = "I'm sorry, I couldn't find the price information."
 
-        # Step 5: Check if the intent is "GetCryptoPrice"
-        if intent == 'GetCryptoPrice':
-            crypto_name = parameters.get('crypto')  # Get the cryptocurrency name
+        # Step 5: Process the intent if crypto_name is found
+        if intent == 'GetCryptoPrice' and crypto_name:
+            url = f'https://api.coingecko.com/api/v3/simple/price?ids={crypto_name}&vs_currencies=usd'
+            response = requests.get(url)
 
-            if crypto_name:
-                # Step 6: Call CoinGecko API to get the price of the cryptocurrency
-                url = f'https://api.coingecko.com/api/v3/simple/price?ids={crypto_name}&vs_currencies=usd'
-                response = requests.get(url)
-
-                if response.status_code == 200:
-                    # Step 7: Parse the response from CoinGecko
-                    data = response.json()
-                    if crypto_name in data:
-                        price = data[crypto_name]["usd"]
-                        # Respond with the cryptocurrency price
-                        fulfillment_text = f"The current price of {crypto_name.capitalize()} is ${price} USD."
-                    else:
-                        fulfillment_text = f"I couldn't find the price for {crypto_name}."
+            if response.status_code == 200:
+                data = response.json()
+                if crypto_name in data:
+                    price = data[crypto_name]["usd"]
+                    fulfillment_text = f"The current price of {crypto_name.capitalize()} is ${price} USD."
                 else:
-                    fulfillment_text = "There was an error retrieving the cryptocurrency price. Please try again later."
+                    fulfillment_text = f"I couldn't find the price for {crypto_name}."
             else:
-                fulfillment_text = "Please specify a cryptocurrency, like Bitcoin or Ethereum."
+                fulfillment_text = "There was an error retrieving the cryptocurrency price. Please try again later."
+        else:
+            fulfillment_text = "Please specify a cryptocurrency, like Bitcoin or Ethereum."
 
-        # Return the response as JSON that Dialogflow can use
         return jsonify({"fulfillmentText": fulfillment_text})
 
     except Exception as e:
-        # Return error if something goes wrong
         return jsonify({'response': f'Error processing the request: {str(e)}'}), 400
-
-
-# Run the Flask app
-if __name__ == '__main__':
-    app.run(debug=True)
