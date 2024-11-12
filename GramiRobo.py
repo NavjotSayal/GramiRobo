@@ -4,7 +4,6 @@ import requests
 # Initialize Flask app
 app = Flask(__name__)
 
-
 # Root route to return your student number in JSON format
 @app.route('/')
 def home():
@@ -20,26 +19,28 @@ def webhook():
         return jsonify({'response': 'Invalid JSON format or empty body'}), 400
 
     try:
-        # Step 3: Extract the intent name and parameters from the request
+        # Step 3: Extract the intent name and action from the request
         intent = req.get('queryResult', {}).get('intent', {}).get('displayName', 'Unknown')
+        action = req.get('queryResult', {}).get('action', 'Unknown')  # Get the action
         parameters = req.get('queryResult', {}).get('parameters', {})
 
         # Print to inspect the request data and check if the parameter exists
         print(f"Received request: {req}")
         print(f"Intent: {intent}")
+        print(f"Action: {action}")  # Print the action
         print(f"Parameters: {parameters}")
 
-        # Step 4: Check if the parameter 'crypto' is present
+        # Step 4: Check if the action is 'crypto.pricecheck' and the 'crypto' parameter is provided
         crypto_name = parameters.get('crypto', None)
 
         # Print the value of crypto_name
         print(f"Crypto Name: {crypto_name}")
 
-        # Set a default response if the intent is not recognized
+        # Set a default response if the intent is not recognized or no crypto_name is provided
         fulfillment_text = "I'm sorry, I couldn't find the price information."
 
-        # Step 5: Process the intent if crypto_name is found
-        if intent == 'GetCryptoPrice' and crypto_name:
+        # Step 5: Process the intent if action matches 'crypto.pricecheck' and crypto_name is found
+        if action == 'crypto.pricecheck' and crypto_name:
             url = f'https://api.coingecko.com/api/v3/simple/price?ids={crypto_name}&vs_currencies=usd'
             response = requests.get(url)
 
